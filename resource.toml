@@ -1,1 +1,145 @@
-## Add resources to get started
+[[server]]
+name = "Cirno Actual"
+[server.config]
+enabled = true
+
+##
+
+[[stack]]
+name = "foundryvtt"
+[stack.config]
+server = "Cirno Actual"
+poll_for_updates = true
+auto_update = true
+auto_update_all_services = true
+file_contents = """
+services:
+  foundryvtt:
+    image: felddy/foundryvtt:release
+    container_name: foundryvtt
+    volumes:
+      - /Users/ehouse/Data/foundrydata:/data
+    networks:
+      - cloudflare-tunnel
+    env_file:
+      - .env
+    ports:
+      - "30000:30000"
+    restart: unless-stopped
+
+networks:
+  cloudflare-tunnel:
+    external: true
+"""
+environment = """
+FOUNDRY_USERNAME=[[FOUNDRY_USERNAME]]
+FOUNDRY_PASSWORD=[[FOUNDRY_PASSKEY]]
+FOUNDRY_ADMIN_KEY=[[FOUNDRY_PASSKEY]]
+"""
+
+##
+
+[[stack]]
+name = "internal-proxy"
+description = "Reverse Proxy for internal eeveenet service endpoints"
+[stack.config]
+server = "Cirno Actual"
+file_contents = """
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /Users/ehouse/Server/internal-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /Users/ehouse/Server/certs:/certs:ro
+    networks:
+      - komodo_internal
+
+networks:
+  komodo_internal:
+    external: true
+"""
+
+##
+
+[[deployment]]
+name = "1d20_io"
+[deployment.config]
+server = "Cirno Actual"
+image.type = "Build"
+image.params.build = "1d20_io"
+redeploy_on_build = true
+network = "cloudflare-tunnel"
+restart = "unless-stopped"
+ports = """
+3000:80
+"""
+
+##
+
+[[build]]
+name = "1d20_io"
+[build.config]
+builder = "Local"
+linked_repo = "1d20.io"
+dockerfile_path = "dockerfile"
+
+##
+
+[[repo]]
+name = "1d20.io"
+[repo.config]
+server = "Cirno Actual"
+builder = "Local"
+git_account = "ehouse"
+repo = "ehouse/1d20.io"
+
+##
+
+[[procedure]]
+name = "Backup Core Database"
+description = "Triggers the Core database backup at the scheduled time."
+tags = ["system"]
+config.schedule = "Every day at 01:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "BackupCoreDatabase", execution.params = {}, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Global Auto Update"
+description = "Pulls and auto updates Stacks and Deployments using 'poll_for_updates' or 'auto_update'."
+tags = ["system"]
+config.schedule = "Every day at 03:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "GlobalAutoUpdate", execution.params = {}, enabled = true }
+]
+
+##
+
+[[builder]]
+name = "Local"
+[builder.config]
+type = "Server"
+params.server_id = "Cirno Actual"
+
+##
+
+[[resource_sync]]
+name = "docker-config"
+[resource_sync.config]
+repo = "ehouse/docker-config"
+git_account = "ehouse"
+resource_path = ["resource.toml"]
+managed = true
