@@ -1,1 +1,0 @@
-Resource Syncs for Komodo
