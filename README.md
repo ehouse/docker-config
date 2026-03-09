@@ -1,25 +1,38 @@
 # Self Hosted
 
-Instructions for myself in case I need to reconfigure or re-setup the environment
+Instructions for myself in case I need to reconfigure or re-setup the environment.
+
+## Infrastructure
+
+- **Hardware**: M4 Mac Mini
+- **Orchestration**: Komodo (manages all containers)
+- **Networking**: Cloudflare Tunnel (`cirno`) for external access, nginx reverse proxy for local HTTPS
+- **Local DNS**: `cirno.eeveenet` → Mac Mini local IP
+- **Docker Networks**:
+  - `komodo_internal` — Komodo-managed containers
+  - `cloudflare-tunnel` — Cloudflare tunnel container
 
 ## Prerequisites
 
 - Docker Desktop
-- Shared Docker network: `docker network create shared`
-- Cloudflare tunnel configured at `foundry.derbynet.io`
+- Komodo deployed and running
+- Local DNS record for `cirno.eeveenet` pointing to Mac Mini
+- mkcert installed for local SSL: `brew install mkcert && mkcert -install`
 
 ## Configuration
 
-`.env` (Not committed)
+`.env` files are not committed. Required variables:
+
+## Local SSL (mkcert)
+```bash
+brew install mkcert
+mkcert -install
+mkcert cirno.eeveenet
 ```
-FOUNDRY_USERNAME=
-FOUNDRY_PASSWORD=
-FOUNDRY_LICENSE_KEY=
-TUNNEL_TOKEN=
-```
+
+Place the generated certs in the `internal-proxy/certs/` directory. The CA root for trusting on other devices is at:
 
 ## Commands
-
 ```bash
 docker compose up -d        # start
 docker compose down         # stop
@@ -30,7 +43,7 @@ docker compose restart      # restart all
 ## Notes
 
 - FoundryVTT data lives at `/Users/ehouse/Data/foundrydata`
-- Accessible locally at `http://localhost:30000`
-- Accessible remotely at `https://foundry.derbynet.io`
+- Komodo is local-only, not exposed via Cloudflare tunnel
 - Tunnel token from: `cloudflared tunnel token cirno`
 - Cloudflare tunnel managed at: Cloudflare Dashboard → Zero Trust → Networks → Tunnels → cirno
+- Resource sync configured to this repo for Komodo state
